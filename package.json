@@ -1,0 +1,24 @@
+{
+    "name": "dischord",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "license": "CC0-1.0",
+    "scripts": {
+        "start": "node ./build/index.js",
+        "test": "node ./build/test.js",
+        "build": "tsc -outDir ./build -p ./src"
+    },
+    "dependencies": {
+        "@types/fs-extra": "^7.0.0",
+        "@types/node": "^8.10.49",
+        "@types/stream-buffers": "^3.0.3",
+        "discord.js": "^11.5.1",
+        "fs-extra": "^8.0.1",
+        "node-opus": "^0.3.2",
+        "opusscript": "0.0.6",
+        "stream-buffers": "^3.0.2",
+        "typescript": "^2.9.2"
+    },
+    "author": "Raclett3"
+}
