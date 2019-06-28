@@ -48,7 +48,7 @@ type LoopStack = {
 }[];
 
 export default function(score: string, voiceChannel: boolean): Buffer | ReadableStreamBuffer | null  {
-    const tokens = score.toLowerCase().match(/([a-g][-+]?|r)[0-9]*\.?|[;<>()\[]|\][0-9]+|[tly][0-9]+|@[0-9]+(,-?[0-9]+)*/g);
+    const tokens = score.toLowerCase().match(/([a-g][-+]?|r)[0-9]*\.?|[;<>()\[]|\][0-9]+|[tlyw][0-9]+|@[0-9]+(,-?[0-9]+)*/g);
     if (tokens === null) {
         return null;
     }
@@ -64,6 +64,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
     let chord = false;
     let lastEnd = 0;
     let decay = 0;
+    let sweep = 1;
     const loopStack: LoopStack = [];
     const tokenLength = tokens.length;
     for (let i = 0; i < tokenLength; i++) {
@@ -131,6 +132,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
             const frequency = frequencyScale[scale] * Math.pow(2, octave);
             const start = bufferIndex;
             let currentVolume = 1;
+            let currentFreq = frequency;
             while (bufferIndex < end) {
                 let amplitude = 0;
                 if (end - sampling / 100 > bufferIndex) {
@@ -141,27 +143,27 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
                                     amplitude += (Math.random() - 0.5) * wave.volume * currentVolume;
                                     break;
                                 case "saw":
-                                    amplitude += (((bufferIndex - start) / sampling * frequency * Math.pow(2, wave.octave) * wave.detune) % 2 - 1) / 2 * wave.volume * currentVolume;
+                                    amplitude += (((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune) % 2 - 1) / 2 * wave.volume * currentVolume;
                                     break;
                                 case "sine":
-                                    amplitude += (Math.sin((bufferIndex - start) / sampling * frequency * Math.pow(2, wave.octave) * wave.detune * Math.PI) - 0.5) * wave.volume * currentVolume;
+                                    amplitude += (Math.sin((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune * Math.PI) - 0.5) * wave.volume * currentVolume;
                                     break;
                                 case "triangle":
-                                    amplitude += (Math.acos(Math.cos((bufferIndex - start) / sampling * frequency * Math.pow(2, wave.octave) * wave.detune * Math.PI)) / Math.PI - 0.5) * wave.volume * currentVolume;
+                                    amplitude += (Math.acos(Math.cos((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune * Math.PI)) / Math.PI - 0.5) * wave.volume * currentVolume;
                                     break;
                                 case "square12.5":
-                                    amplitude += (Math.floor((bufferIndex - start) / sampling * frequency * Math.pow(2, wave.octave) * wave.detune * 4) % 8 === 7 ? 0.5 : -0.5) * wave.volume * currentVolume;
+                                    amplitude += (Math.floor((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune * 4) % 8 === 7 ? 0.5 : -0.5) * wave.volume * currentVolume;
                                     break;
                                 case "square25":
-                                    amplitude += (Math.floor((bufferIndex - start) / sampling * frequency * Math.pow(2, wave.octave) * wave.detune * 2) % 4 === 3 ? 0.5 : -0.5) * wave.volume * currentVolume;
+                                    amplitude += (Math.floor((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune * 2) % 4 === 3 ? 0.5 : -0.5) * wave.volume * currentVolume;
                                     break;
                                 case "square50":
-                                    amplitude += (Math.floor((bufferIndex - start) / sampling * frequency * Math.pow(2, wave.octave) * wave.detune) % 2 ? 0.5 : -0.5) * wave.volume * currentVolume;
+                                    amplitude += (Math.floor((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune) % 2 ? 0.5 : -0.5) * wave.volume * currentVolume;
                                     break;
                             }
                         }
                     } else {
-                        amplitude += (Math.floor((bufferIndex - start) / sampling * frequency) % 2 ? 0.5 : -0.5) * currentVolume;
+                        amplitude += (Math.floor((bufferIndex - start) / sampling * currentFreq) % 2 ? 0.5 : -0.5) * currentVolume;
                     }
                 }
                 let value = Math.floor((amplitude / 8)  * 0x8000);
@@ -186,6 +188,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
                 if (currentVolume < 0) {
                     currentVolume = 0;
                 }
+                currentFreq *= Math.pow(sweep, 1 / sampling);
             }
             if (chord) {
                 bufferIndex = start;
@@ -223,12 +226,15 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
             bufferIndex = 0;
             octave = 0;
             decay = 0;
+            sweep = 1;
         } else if (currentToken[0] === "t") {
             tempo = Number(currentToken.slice(1));
         } else if (currentToken[0] === "l") {
             toneLength = Number(currentToken.slice(1));
         } else if (currentToken[0] === "y") {
             decay = (10000 - Math.pow(Number(currentToken.slice(1)), 2)) / 1000;
+        } else if (currentToken[0] === "w") {
+            sweep = Number(currentToken.slice(1)) / 100;
         } else if (currentToken[0] === "@") {
             const parameters = currentToken.slice(1).split(",");
             const types: WaveType[] = ["square50", "square25", "square12.5", "triangle", "saw", "sine", "noise"];
