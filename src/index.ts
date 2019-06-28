@@ -7,6 +7,7 @@ import * as Discord from "discord.js"
 import compose from "./compose.js"
 import {getConfig, configLoad} from "./config.js"
 import {ReadableStreamBuffer} from "stream-buffers";
+import { spawn } from "child_process";
 
 const client = new Discord.Client();
 
@@ -64,12 +65,37 @@ export async function ready(): Promise<boolean> {
                 });
             }
         } else if (result instanceof Buffer) {
-            message.reply("", {
-                file: {
-                    attachment: result,
-                    name: "result.wav"
+            message.reply("音声の生成に成功しました。圧縮しています…");
+            const ffmpeg = spawn("ffmpeg", [
+                "-i", "pipe:0",
+                "-vn",
+                "-f", "mp3",
+                "-ac", "1",
+                "-ab", "192k",
+                "-ar", "44100",
+                "-acodec", "libmp3lame",
+                "pipe:1"
+            ], {
+                stdio: ["pipe", "pipe", "pipe"]
+            });
+            let mp3 = Buffer.alloc(0);
+            ffmpeg.stdout.on("data", (data: Buffer) => {
+                mp3 = Buffer.concat([mp3, data]);
+            });
+            ffmpeg.on("close", () => {
+                if (mp3.length > 8 * 1000 * 1000) {
+                    message.reply("容量が大きすぎます。");
+                    return;
                 }
-            })
+                message.reply("", {
+                    file: {
+                        attachment: mp3,
+                        name: "result.mp3"
+                    }
+                });
+            });
+            ffmpeg.stdin.write(result);
+            ffmpeg.stdin.end();
         }
     });
 

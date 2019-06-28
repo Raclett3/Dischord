@@ -68,6 +68,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
     let volume = 1;
     const loopStack: LoopStack = [];
     const tokenLength = tokens.length;
+    const limit = 10 * 1000 * 1000 / 2;
     for (let i = 0; i < tokenLength; i++) {
         const currentToken = tokens[i];
         if (currentToken[0] === "r") {
@@ -88,7 +89,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
             if (bufferIndex >= bufferLength) {
                 bufferLength = bufferIndex + 1;
             }
-            if (bufferLength > (voiceChannel ? 5000000 : 2000000)) {
+            if (bufferLength > limit) {
                 return null;
             }
         } else if (currentToken[0] >= "a" && currentToken[0] <= "g") {
@@ -179,7 +180,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
                 }
                 if (bufferLength <= bufferIndex) {
                     bufferLength = bufferIndex + 1;
-                    if (bufferLength > (voiceChannel ? 5000000 : 2000000)) {
+                    if (bufferLength > limit) {
                         return null;
                     }
                 }
