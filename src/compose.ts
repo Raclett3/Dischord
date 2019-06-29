@@ -135,6 +135,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
             const start = bufferIndex;
             let currentVolume = 1;
             let currentFreq = frequency;
+            let noise = 0;
             while (bufferIndex < end) {
                 let amplitude = 0;
                 if (end - sampling / 100 > bufferIndex) {
@@ -142,7 +143,10 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
                         for (const wave of tone) {
                             switch (wave.type) {
                                 case "noise":
-                                    amplitude += (Math.random() - 0.5) * wave.volume * currentVolume * volume;
+                                    if ((bufferIndex - start) % (wave.detune < 1 ? 100 - wave.detune * 100 : 1) === 0) {
+                                        noise = (Math.random() - 0.5) * wave.volume * currentVolume * volume;
+                                    }
+                                    amplitude += noise;
                                     break;
                                 case "saw":
                                     amplitude += (((bufferIndex - start) / sampling * currentFreq * Math.pow(2, wave.octave) * wave.detune) % 2 - 1) / 2 * wave.volume * currentVolume * volume;
@@ -262,7 +266,7 @@ export default function(score: string, voiceChannel: boolean): Buffer | Readable
                     type: types[Number(parameters[0])],
                     volume: Number(parameters[1]) / 100,
                     octave: Number(parameters[2]),
-                    detune: 0
+                    detune: 1
                 });
             } else {
                 tone.push({
